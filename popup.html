@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Endfield Google Bridge</title>
+    <style>
+      :root {
+        --bg: #f6f8fb;
+        --panel: rgba(255, 255, 255, 0.96);
+        --panel-soft: #ffffff;
+        --text: #171a21;
+        --text-muted: #667084;
+        --primary: #d6a80f;
+        --cyan: #0891b2;
+        --danger: #e5484d;
+        --line: rgba(0, 0, 0, 0.14);
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        width: 400px;
+        background:
+          linear-gradient(140deg, rgba(214, 168, 15, 0.08), transparent 35%),
+          linear-gradient(320deg, rgba(8, 145, 178, 0.08), transparent 42%),
+          var(--bg);
+        color: var(--text);
+        font-family: "DM Sans", "Segoe UI", "Microsoft YaHei", sans-serif;
+      }
+
+      .frame { padding: 12px; }
+      .panel {
+        position: relative;
+        border: 1px solid var(--line);
+        background: var(--panel);
+      }
+      .panel::before,
+      .panel::after {
+        content: "";
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        pointer-events: none;
+      }
+      .panel::before {
+        left: -1px;
+        top: -1px;
+        border-top: 2px solid var(--primary);
+        border-left: 2px solid var(--primary);
+      }
+      .panel::after {
+        right: -1px;
+        bottom: -1px;
+        border-bottom: 2px solid var(--cyan);
+        border-right: 2px solid var(--cyan);
+      }
+
+      .header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px;
+        border-bottom: 1px solid var(--line);
+      }
+      .header img { width: 30px; height: 30px; }
+      .micro {
+        font-family: "JetBrains Mono", Consolas, monospace;
+        font-size: 10px;
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+      }
+      .title { font-size: 14px; margin-top: 2px; }
+
+      .content { padding: 12px; }
+      .field { margin-bottom: 10px; }
+      .label {
+        display: block;
+        font-size: 11px;
+        color: var(--text-muted);
+        margin-bottom: 5px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        font-family: "JetBrains Mono", Consolas, monospace;
+      }
+      input {
+        width: 100%;
+        border: 1px solid var(--line);
+        background: var(--panel-soft);
+        color: var(--text);
+        outline: none;
+        padding: 8px 10px;
+        font-size: 12px;
+        border-left: 2px solid rgba(214, 168, 15, 0.62);
+      }
+      input:focus {
+        border-color: rgba(8, 145, 178, 0.55);
+        border-left-color: var(--cyan);
+      }
+
+      .actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-top: 6px;
+      }
+      button {
+        border: 1px solid var(--line);
+        background: #fff;
+        color: var(--text);
+        padding: 8px 6px;
+        font-size: 12px;
+        cursor: pointer;
+      }
+      #saveBtn {
+        border-color: rgba(214, 168, 15, 0.55);
+        background: rgba(214, 168, 15, 0.14);
+      }
+      #clearBtn {
+        border-color: rgba(229, 72, 77, 0.48);
+      }
+
+      .log {
+        margin-top: 10px;
+        border: 1px solid var(--line);
+        background: #ffffff;
+        padding: 10px;
+        min-height: 100px;
+        max-height: 180px;
+        overflow: auto;
+        white-space: pre-wrap;
+        word-break: break-word;
+        font-family: "JetBrains Mono", Consolas, monospace;
+        font-size: 11px;
+        line-height: 1.45;
+      }
+
+      .footer-tip {
+        margin-top: 8px;
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+      .stripe {
+        margin-top: 8px;
+        height: 4px;
+        background-image: repeating-linear-gradient(
+          45deg,
+          rgba(214, 168, 15, 0.45),
+          rgba(214, 168, 15, 0.45) 4px,
+          rgba(8, 145, 178, 0.32) 4px,
+          rgba(8, 145, 178, 0.32) 8px
+        );
+        opacity: 0.65;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="frame">
+      <section class="panel">
+        <header class="header">
+          <img src="icon.png" alt="Endfield" />
+          <div>
+            <div class="micro">SKPORT BRIDGE <span id="version">v0.0.0</span></div>
+            <div class="title">Google 自动桥接配置</div>
+          </div>
+        </header>
+
+        <div class="content">
+          <div class="field">
+            <label class="label" for="backendBaseUrl">Backend Base URL</label>
+            <input id="backendBaseUrl" placeholder="https://end-api.shallow.ink" />
+          </div>
+
+          <div class="actions">
+            <button id="saveBtn">保存自动配置</button>
+            <button id="clearBtn">清除配置</button>
+          </div>
+
+          <pre id="log" class="log">加载中...</pre>
+          <div class="footer-tip">插件只负责捕获回调参数并自动提交，不负责创建会话。</div>
+          <div class="stripe"></div>
+        </div>
+      </section>
+    </div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

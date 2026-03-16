@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "Endfield Third Brige",
+  "version": "0.2.0",
+  "description": "Bridge Google OAuth callback to Endfield skport backend flow.",
+  "icons": {
+    "16": "icon.png",
+    "32": "icon.png",
+    "48": "icon.png",
+    "128": "icon.png"
+  },
+  "permissions": [
+    "storage",
+    "tabs",
+    "webNavigation",
+    "notifications"
+  ],
+  "host_permissions": [
+    "*://web-api.gryphline.com/*",
+    "*://as.gryphline.com/*",
+    "http://*/*",
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "service-worker.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Endfield Google Bridge",
+    "default_icon": {
+      "16": "icon.png",
+      "32": "icon.png",
+      "48": "icon.png"
+    }
+  }
+}
