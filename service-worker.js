@@ -1,10 +1,27 @@
 const SETTINGS_KEY = "bridgeSettings";
 const DEFAULT_BACKEND_BASE_URL = "https://end-api.shallow.ink";
+
+const PROVIDER_BY_CHANNEL_ID = {
+  2: "google",
+  3: "facebook",
+  4: "apple",
+};
+
+const PROVIDER_LABEL = {
+  google: "Google",
+  facebook: "Facebook",
+  apple: "Apple",
+};
+
 const CALLBACK_HOST_PATTERNS = [
   /^https:\/\/web-api\.gryphline\.com\/callback\/thirdPartyAuth\.html/i,
   /^https:\/\/as\.gryphline\.com\/third_party\/v1\/google_callback/i,
+  /^https:\/\/as\.gryphline\.com\/third_party\/v1\/facebook_callback/i,
+  /^https:\/\/as\.gryphline\.com\/third_party\/v1\/apple_callback/i,
   /^https:\/\/www\.skport\.com\/?/i,
 ];
+
+const lastProviderByTab = new Map();
 
 function matchCallback(url) {
   const normalized = String(url || "").trim();
@@ -19,7 +36,7 @@ function matchCallback(url) {
     const hasChannel = parsed.searchParams.has("channelId");
     const hasStatus = parsed.searchParams.has("status");
     const isSkportAction = parsed.searchParams.get("tpa_action") === "login";
-    return (hasToken && hasChannel) || (isSkportAction && hasStatus);
+    return (hasToken && hasChannel) || (isSkportAction && hasStatus) || /_callback$/i.test(parsed.pathname);
   } catch {
     return false;
   }
@@ -29,19 +46,42 @@ function normalizeBaseUrl(raw) {
   return String(raw || "").trim().replace(/\/$/, "");
 }
 
+function channelIdToProvider(channelId) {
+  return PROVIDER_BY_CHANNEL_ID[channelId] || null;
+}
+
+function inferProviderFromUrl(url) {
+  try {
+    const parsed = new URL(url);
+    const pathname = parsed.pathname.toLowerCase();
+    if (pathname.includes("google_callback")) return "google";
+    if (pathname.includes("facebook_callback")) return "facebook";
+    if (pathname.includes("apple_callback")) return "apple";
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 function parseCallbackPayload(urlString) {
   const url = new URL(urlString);
   const rawStatus = (url.searchParams.get("status") || "").trim();
   const status = rawStatus.toLowerCase();
   const channelIdRaw = (url.searchParams.get("channelId") || "").trim();
   const token = (url.searchParams.get("token") || "").trim();
-  const channelId = Number.parseInt(channelIdRaw, 10);
+  const channelIdParsed = Number.parseInt(channelIdRaw, 10);
+  const channelId = Number.isFinite(channelIdParsed) ? channelIdParsed : null;
+
+  const providerByChannel = channelIdToProvider(channelId);
+  const providerByPath = inferProviderFromUrl(urlString);
+  const provider = providerByChannel || providerByPath || null;
 
   return {
     rawStatus,
     status,
-    channelId: Number.isFinite(channelId) ? channelId : 2,
+    channelId,
     token,
+    provider,
   };
 }
 
@@ -66,8 +106,16 @@ async function notify(title, message) {
   }
 }
 
-async function completeFlow(baseUrl, channelId, channelToken) {
-  const endpoint = `${normalizeBaseUrl(baseUrl)}/login/skport/google/complete`;
+function completeEndpoint(baseUrl, provider) {
+  return `${normalizeBaseUrl(baseUrl)}/login/skport/${provider}/complete`;
+}
+
+function statusEndpoint(baseUrl, provider) {
+  return `${normalizeBaseUrl(baseUrl)}/login/skport/${provider}/status`;
+}
+
+async function completeFlow(baseUrl, provider, channelId, channelToken) {
+  const endpoint = completeEndpoint(baseUrl, provider);
   const response = await fetch(endpoint, {
     method: "POST",
     headers: {
@@ -87,8 +135,8 @@ async function completeFlow(baseUrl, channelId, channelToken) {
   return payload;
 }
 
-async function pollStatus(baseUrl, maxAttempts = 10) {
-  const endpoint = `${normalizeBaseUrl(baseUrl)}/login/skport/google/status`;
+async function pollStatus(baseUrl, provider, maxAttempts = 10) {
+  const endpoint = statusEndpoint(baseUrl, provider);
   for (let i = 0; i < maxAttempts; i += 1) {
     const response = await fetch(endpoint, { method: "GET" });
     const payload = await response.json().catch(() => ({}));
@@ -113,7 +161,7 @@ chrome.webNavigation.onCommitted.addListener(async (details) => {
 
   const settings = await loadSettings();
   if (!settings.backendBaseUrl) {
-    await notify("Google Bridge", "请先在插件弹窗保存后端地址。 ");
+    await notify("SKPORT Bridge", "请先在插件弹窗保存后端地址。");
     return;
   }
 
@@ -121,23 +169,33 @@ chrome.webNavigation.onCommitted.addListener(async (details) => {
   try {
     callbackPayload = parseCallbackPayload(url);
   } catch (error) {
-    await notify("Google Bridge", `回调解析失败：${error.message}`);
+    await notify("SKPORT Bridge", `回调解析失败：${error.message}`);
     return;
+  }
+
+  if (callbackPayload.provider && details.tabId >= 0) {
+    lastProviderByTab.set(details.tabId, callbackPayload.provider);
   }
 
   const isFailureStatus = callbackPayload.status !== "" && callbackPayload.status !== "success" && callbackPayload.status !== "0";
   if (isFailureStatus) {
-    await notify("Google Bridge", `Google 授权状态：${callbackPayload.rawStatus || callbackPayload.status}`);
+    const providerText = callbackPayload.provider ? `${PROVIDER_LABEL[callbackPayload.provider] || callbackPayload.provider} ` : "";
+    await notify("SKPORT Bridge", `${providerText}授权状态：${callbackPayload.rawStatus || callbackPayload.status}`);
     return;
   }
 
   if (callbackPayload.token) {
+    if (!callbackPayload.provider || !callbackPayload.channelId) {
+      await notify("SKPORT Bridge", "已捕获 token，但无法根据 channelId 判定 provider，已停止自动提交。");
+      return;
+    }
+
     try {
-      await completeFlow(settings.backendBaseUrl, callbackPayload.channelId, callbackPayload.token);
-      await notify("Google Bridge", "已自动提交后端 complete，可返回前端继续绑定。 ");
+      await completeFlow(settings.backendBaseUrl, callbackPayload.provider, callbackPayload.channelId, callbackPayload.token);
+      await notify("SKPORT Bridge", `${PROVIDER_LABEL[callbackPayload.provider]} 回调已自动提交后端 complete。`);
       return;
     } catch (error) {
-      await notify("Google Bridge", `自动提交失败：${error.message}`);
+      await notify("SKPORT Bridge", `${PROVIDER_LABEL[callbackPayload.provider]} 自动提交失败：${error.message}`);
       return;
     }
   }
@@ -151,12 +209,20 @@ chrome.webNavigation.onCommitted.addListener(async (details) => {
     }
   })();
 
-  if (isSkportLanding) {
-    const pollResult = await pollStatus(settings.backendBaseUrl, 10);
-    if (pollResult.ok) {
-      await notify("Google Bridge", "检测到后端会话已完成，可返回前端继续绑定。 ");
-    } else {
-      await notify("Google Bridge", "已到达回调页，但未捕获 token。请检查回调链路是否包含 token 参数。 ");
-    }
+  if (!isSkportLanding) {
+    return;
+  }
+
+  const provider = callbackPayload.provider || lastProviderByTab.get(details.tabId) || null;
+  if (!provider) {
+    await notify("SKPORT Bridge", "已到达回调页，但无法识别 provider（缺少 channelId），未执行状态轮询。");
+    return;
+  }
+
+  const pollResult = await pollStatus(settings.backendBaseUrl, provider, 10);
+  if (pollResult.ok) {
+    await notify("SKPORT Bridge", `${PROVIDER_LABEL[provider]} 会话已完成，可返回前端继续绑定。`);
+  } else {
+    await notify("SKPORT Bridge", `${PROVIDER_LABEL[provider]} 回调已到达，但未完成会话，请检查后端 flow 状态。`);
   }
 });

@@ -1,12 +1,13 @@
-# Endfield Google Bridge Extension
+# Endfield Third-Party Bridge Extension
 
-Chrome 扩展：用于自动捕获 OAuth 回调参数并提交到你的后端 Google 登录桥接接口。
+Chrome 扩展：用于自动捕获 OAuth 回调参数并提交到你的后端 skport 第三方登录桥接接口（Google/Facebook/Apple）。
 
 ## 功能
 
-- 自动监听 Google 登录回调链路
+- 自动监听 Google/Facebook/Apple 登录回调链路
 - 自动提取 `channelId` / `token` 参数
-- 自动调用后端 `POST /login/skport/google/complete`
+- 根据 `channelId` 自动识别 provider（Google=2，Facebook=3，Apple=4）并路由到对应后端 complete 接口
+- 自动调用后端 `POST /login/skport/{provider}/complete`
 - 弹窗支持配置后端地址（默认：`https://end-api.shallow.ink`）
 
 ## 安装（开发者模式）
@@ -20,7 +21,7 @@ Chrome 扩展：用于自动捕获 OAuth 回调参数并提交到你的后端 Go
 
 1. 点击扩展图标，确认 `Backend Base URL`
 2. 点击「保存自动配置」
-3. 回到你的业务前端，发起 Google 登录
+3. 回到你的业务前端，发起 Google、Facebook 或 Apple 登录
 4. 扩展会在回调时自动提交登录参数
 
 ## 版本与发布

@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Endfield Third Brige",
-  "version": "0.2.0",
-  "description": "Bridge Google OAuth callback to Endfield skport backend flow.",
+  "version": "0.3.0",
+  "description": "Bridge Third-Party OAuth callback to Endfield skport backend flow.",
   "icons": {
     "16": "icon.png",
     "32": "icon.png",
@@ -26,7 +26,7 @@
   },
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Endfield Google Bridge",
+    "default_title": "Endfield Third-Party Bridge",
     "default_icon": {
       "16": "icon.png",
       "32": "icon.png",
