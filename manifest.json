@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Endfield Third Brige",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Bridge Third-Party OAuth callback to Endfield skport backend flow.",
   "icons": {
     "16": "icon.png",
@@ -20,6 +20,18 @@
     "*://as.gryphline.com/*",
     "http://*/*",
     "https://*/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "http://localhost:3018/*",
+        "https://end.shallow.ink/*"
+      ],
+      "js": [
+        "content-script.js"
+      ],
+      "run_at": "document_start"
+    }
   ],
   "background": {
     "service_worker": "service-worker.js"
