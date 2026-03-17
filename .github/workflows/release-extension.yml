@@ -39,6 +39,7 @@ jobs:
             manifest.json \
             popup.html \
             popup.js \
+            content-script.js \
             service-worker.js \
             README.md \
             icon.png \
