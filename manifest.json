@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Endfield Third Brige",
-  "version": "0.4.0",
+  "version": "0.4.2",
   "description": "Bridge Third-Party OAuth callback to Endfield skport backend flow.",
   "icons": {
     "16": "icon.png",

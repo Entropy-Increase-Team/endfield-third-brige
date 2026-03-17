@@ -1,12 +1,12 @@
-const SETTINGS_KEY = "bridgeSettings";
-const DEFAULT_BACKEND_BASE_URL = "https://end-api.shallow.ink";
+var SETTINGS_KEY = "bridgeSettings";
+var DEFAULT_BACKEND_BASE_URL = "https://end-api.shallow.ink";
 
-const els = {
+var els = {
   backendBaseUrl: document.getElementById("backendBaseUrl"),
   saveBtn: document.getElementById("saveBtn"),
   clearBtn: document.getElementById("clearBtn"),
   log: document.getElementById("log"),
-  version: document.getElementById("version"),
+  version: document.getElementById("version")
 };
 
 function normalizeBaseUrl(raw) {
@@ -18,25 +18,27 @@ function setLog(value) {
 }
 
 async function loadSettings() {
-  const data = await chrome.storage.local.get(SETTINGS_KEY);
+  var data = await chrome.storage.local.get(SETTINGS_KEY);
   return data[SETTINGS_KEY] || null;
 }
 
 function getDefaultSettings() {
   return {
     backendBaseUrl: DEFAULT_BACKEND_BASE_URL,
-    savedAt: Date.now(),
+    savedAt: Date.now()
   };
 }
 
 async function saveSettings(settings) {
-  await chrome.storage.local.set({ [SETTINGS_KEY]: settings });
+  var payload = {};
+  payload[SETTINGS_KEY] = settings;
+  await chrome.storage.local.set(payload);
 }
 
 function collectSettings() {
   return {
     backendBaseUrl: normalizeBaseUrl(els.backendBaseUrl.value),
-    savedAt: Date.now(),
+    savedAt: Date.now()
   };
 }
 
@@ -47,14 +49,14 @@ function validate(settings) {
 }
 
 async function hydrate() {
-  const settings = await loadSettings();
-  const effectiveSettings = settings || getDefaultSettings();
+  var settings = await loadSettings();
+  var effectiveSettings = settings || getDefaultSettings();
 
   els.backendBaseUrl.value = effectiveSettings.backendBaseUrl || DEFAULT_BACKEND_BASE_URL;
 
-  if (els.version && chrome?.runtime?.getManifest) {
-    const manifest = chrome.runtime.getManifest();
-    els.version.textContent = `v${manifest.version}`;
+  if (els.version && chrome && chrome.runtime && chrome.runtime.getManifest) {
+    var manifest = chrome.runtime.getManifest();
+    els.version.textContent = "v" + manifest.version;
   }
 
   if (!settings) {
@@ -64,8 +66,8 @@ async function hydrate() {
       mode: "auto",
       message: "已写入默认后端地址，可直接使用。",
       settings: {
-        backendBaseUrl: effectiveSettings.backendBaseUrl,
-      },
+        backendBaseUrl: effectiveSettings.backendBaseUrl
+      }
     });
     return;
   }
@@ -75,41 +77,46 @@ async function hydrate() {
     mode: "auto",
     message: "已启用自动桥接。插件仅捕获回调参数并自动提交后端 complete。",
     settings: {
-      backendBaseUrl: settings.backendBaseUrl,
-    },
+      backendBaseUrl: settings.backendBaseUrl
+    }
   });
 }
 
-els.saveBtn.addEventListener("click", async () => {
-  try {
-    const settings = collectSettings();
-    validate(settings);
-    await saveSettings(settings);
+els.saveBtn.addEventListener("click", function () {
+  return (async function () {
+    try {
+      var settings = collectSettings();
+      validate(settings);
+      await saveSettings(settings);
+      setLog({
+        ok: true,
+        mode: "auto",
+        message: "保存成功。无需用户手动操作插件，回调时自动提交后端。",
+        settings: {
+          backendBaseUrl: settings.backendBaseUrl
+        }
+      });
+    } catch (error) {
+      var errMsg = error && error.message ? error.message : "unknown error";
+      setLog({ ok: false, error: errMsg });
+    }
+  })();
+});
+
+els.clearBtn.addEventListener("click", function () {
+  return (async function () {
+    var defaults = getDefaultSettings();
+    await saveSettings(defaults);
+    els.backendBaseUrl.value = defaults.backendBaseUrl;
     setLog({
       ok: true,
       mode: "auto",
-      message: "保存成功。无需用户手动操作插件，回调时自动提交后端。",
+      message: "已恢复默认后端地址。",
       settings: {
-        backendBaseUrl: settings.backendBaseUrl,
-      },
+        backendBaseUrl: defaults.backendBaseUrl
+      }
     });
-  } catch (error) {
-    setLog({ ok: false, error: error.message });
-  }
-});
-
-els.clearBtn.addEventListener("click", async () => {
-  const defaults = getDefaultSettings();
-  await saveSettings(defaults);
-  els.backendBaseUrl.value = defaults.backendBaseUrl;
-  setLog({
-    ok: true,
-    mode: "auto",
-    message: "已恢复默认后端地址。",
-    settings: {
-      backendBaseUrl: defaults.backendBaseUrl,
-    },
-  });
+  })();
 });
 
 hydrate();
